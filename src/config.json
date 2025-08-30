@@ -15,7 +15,7 @@
   },
   "hero": {
     "name": "Geekertao",
-    "bio": "A static blog template build with Astro and React.",
+    "bio": "不为梦想本身奋斗。为那个提出梦想的自己。",
     "description": "Clean, Cute, Fast.",
     "socials": [
       {
@@ -37,7 +37,7 @@
         "color": "rgb(212, 70, 56)"
       }
     ],
-    "yiyan": "不为梦想本身奋斗。为那个提出梦想的自己。"
+    "yiyan": "温柔正确的人总是难以生存，因为这世界既不温柔，也不正确。"
   },
   "color": {
     "accent": [
