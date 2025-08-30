@@ -1,8 +1,10 @@
 ---
 title: Cloudflare Analytics Dashboard
-description: 多账户、多 Zone 的 Cloudflare 流量分析仪表盘
-pubDate: 2025-08-30
-tags: ['项目介绍', 'Cloudflare', '数据分析', '开源项目']
+date: 2025-08-30
+lastMod: 2025-08-30T19:58:16.758Z
+summary: 多账户、多 Zone 的 Cloudflare 流量分析仪表盘
+category: 教程
+tags: [项目介绍, Cloudflare, 数据分析, 开源项目]
 ---
 
 # Cloudflare Analytics Dashboard
