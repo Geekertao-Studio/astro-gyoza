@@ -1,7 +1,7 @@
 ---
 title: Cloudflare Analytics Dashboard
 date: 2025-08-30
-lastMod: 2025-08-30T19:58:16.758Z
+lastMod: 2025-08-31T13:30:16.758Z
 summary: 多账户、多 Zone 的 Cloudflare 流量分析仪表盘
 category: 教程
 tags: [项目介绍, Cloudflare, 数据分析, 开源项目]
@@ -34,6 +34,10 @@ tags: [项目介绍, Cloudflare, 数据分析, 开源项目]
 - 部署：Docker + Nginx
 
 ## 快速开始
+
+### 视频教程
+
+::bilibili{#BV1bRh6zdE8S}
 
 现在支持三种部署方式，按优先级排序：
 
