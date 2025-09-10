@@ -76,6 +76,11 @@
       "icon": "icon-archive"
     },
     {
+      "name": "关于",
+      "link": "/about",
+      "icon": "icon-ghost"
+    },
+    {
       "name": "项目",
       "link": "/projects",
       "icon": "icon-flask"
