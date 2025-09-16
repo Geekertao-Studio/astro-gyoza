@@ -19,6 +19,24 @@
     "description": "春风得意马蹄疾,一日看尽长安花.",
     "socials": [
       {
+        "name": "RSS",
+        "icon": "icon-rss",
+        "url": "/rss.xml",
+        "color": "rgb(23, 23, 23)"
+      },
+      {
+        "name": "Bilibili",
+        "icon": "icon-bilibili-fill",
+        "url": "https://space.bilibili.com/1280679455",
+        "color": "rgb(23, 23, 23)"
+      },
+      {
+        "name": "Netease Cloud Music",
+        "icon": "icon-netease-cloud-music-line",
+        "url": "https://music.163.com/#/user?id=6452794144",
+        "color": "rgb(212, 70, 56)"
+      },
+      {
         "name": "Github",
         "icon": "icon-github",
         "url": "https://github.com/Geekertao",
