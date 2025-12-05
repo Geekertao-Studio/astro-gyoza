@@ -38,6 +38,12 @@ const wordCountStr = (wordCount / 1000).toFixed(1) + 'k'
       <span class="select-none opacity-50">|</span>
       <span>共嘚嘚了 {wordCountStr} 字</span>
     </div>
+    <div class="space-x-1">
+      <span>&copy;{thisYear} <Link href="/">{author.name}</Link>. All rights reserved.</span>
+    </div>
+    <div>
+      <Link target="_blank" rel="noopener noreferrer" href="https://icp.felicity.land/?keyword=%E5%B9%B8ICP%E5%A4%8720250721%E5%8F%B7">幸ICP备20250721号</Link>
+    </div>
   </div>
   <div class="mt-4 flex justify-center">
     <ThemeSwitch client:only="react" />
