@@ -28,7 +28,7 @@
         "name": "Bilibili",
         "icon": "icon-bilibili",
         "url": "https://space.bilibili.com/1280679455",
-        "color": "rgb(23, 23, 23)"
+        "color": "rgb(255,102,153)"
       },
       {
         "name": "Netease Cloud Music",
@@ -154,9 +154,14 @@
       "icon": "icon-hearts"
     },
     {
+      "name": "主站",
+      "link": "https://geekertao.top",
+      "icon": "icon-hashtag"
+    },
+    {
       "name": "买服务器上雨云",
       "link": "https://geekertao.top/rainyun",
-      "icon": "icon-cloud-rain"
+      "icon": "icon-external-link"
     }
   ],
   "posts": {
