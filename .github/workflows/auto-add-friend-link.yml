@@ -14,10 +14,43 @@ jobs:
       issues: write
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
 
-      - name: Extract data
+      - name: 🔍 智能检测是否为友链申请
+        id: detect
+        env:
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run: |
+          # 检测标题前缀 [友链] 或 [friend-link]
+          if [[ "$ISSUE_TITLE" =~ ^\[友链\] || "$ISSUE_TITLE" =~ ^\[friend-link\] ]]; then
+            echo "should_process=true" >> $GITHUB_OUTPUT
+            echo "✅ 检测到友链标题前缀" >> $GITHUB_STEP_SUMMARY
+            exit 0
+          fi
+          
+          # 检测内容是否包含所有必填字段
+          REQUIRED=("网站名称" "网站地址" "网站描述" "头像地址" "短名称")
+          for field in "${REQUIRED[@]}"; do
+            if ! echo "$ISSUE_BODY" | grep -q "### ${field}"; then
+              echo "should_process=false" >> $GITHUB_OUTPUT
+              echo "⏭️ 未检测到友链模板格式，跳过处理" >> $GITHUB_STEP_SUMMARY
+              exit 0
+            fi
+          done
+          
+          echo "should_process=true" >> $GITHUB_OUTPUT
+          echo "✅ 检测到友链模板格式" >> $GITHUB_STEP_SUMMARY
+
+      - name: 🛑 非友链申请，终止
+        if: steps.detect.outputs.should_process == 'false'
+        run: exit 0
+
+      - name: 🔧 提取并验证数据
+        if: steps.detect.outputs.should_process == 'true'
         id: extract
         env:
           ISSUE_BODY: ${{ github.event.issue.body }}
@@ -25,28 +58,28 @@ jobs:
           extract() {
             echo "$ISSUE_BODY" | awk -v label="### ${1}" '$0~label{getline; while(NF==0)getline; print; exit}' | sed 's/^[[:space:]]*//'
           }
-          
+
           TITLE=$(extract "网站名称")
           LINK=$(extract "网站地址")
           DESCRIPTION=$(extract "网站描述")
           AVATAR=$(extract "头像地址")
           SHORT_NAME=$(extract "短名称")
-          
+
           [[ -z "$TITLE" ]] && { echo "error=名称缺失" >> $GITHUB_OUTPUT; exit 1; }
           [[ -z "$LINK" ]] && { echo "error=地址缺失" >> $GITHUB_OUTPUT; exit 1; }
           [[ ! "$LINK" =~ ^https:// ]] && { echo "error=需HTTPS" >> $GITHUB_OUTPUT; exit 1; }
           [[ -z "$SHORT_NAME" ]] && { echo "error=短名称缺失" >> $GITHUB_OUTPUT; exit 1; }
           [[ ! "$SHORT_NAME" =~ ^[a-zA-Z0-9_-]+$ ]] && { echo "error=短名称格式" >> $GITHUB_OUTPUT; exit 1; }
           [[ -f "src/content/friends/${SHORT_NAME}.yaml" ]] && { echo "error=已存在" >> $GITHUB_OUTPUT; exit 1; }
-          
+
           echo "title=$TITLE" >> $GITHUB_OUTPUT
           echo "link=$LINK" >> $GITHUB_OUTPUT
           echo "description=$DESCRIPTION" >> $GITHUB_OUTPUT
           echo "avatar=$AVATAR" >> $GITHUB_OUTPUT
           echo "short_name=$SHORT_NAME" >> $GITHUB_OUTPUT
 
-      - name: Create file
-        if: success()
+      - name: 📄 创建友链文件
+        if: steps.detect.outputs.should_process == 'true' && steps.extract.outcome == 'success'
         run: |
           mkdir -p src/content/friends
           cat > "src/content/friends/${{ steps.extract.outputs.short_name }}.yaml" << EOF
@@ -54,15 +87,14 @@ jobs:
           description: ${{ steps.extract.outputs.description }}
           link: ${{ steps.extract.outputs.link }}
           avatar: ${{ steps.extract.outputs.avatar }}
-          issue: ${{ github.event.issue.number }}
           EOF
 
-      - name: Create PR
-        if: success()
+      - name: 🚀 创建 Pull Request
+        if: steps.detect.outputs.should_process == 'true' && steps.extract.outcome == 'success'
         id: cpr
         uses: peter-evans/create-pull-request@v6
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PAT_TOKEN }}
           title: "Add: ${{ steps.extract.outputs.title }}"
           body: |
             Closes #${{ github.event.issue.number }}
@@ -76,17 +108,18 @@ jobs:
           commit-message: "Add friend: ${{ steps.extract.outputs.title }}"
           delete-branch: true
 
-      - name: Comment
-        if: always()
+      - name: 💬 评论处理结果
+        if: steps.detect.outputs.should_process == 'true'
         uses: actions/github-script@v7
         with:
           script: |
             const success = '${{ steps.extract.outcome }}' === 'success';
-            const error = '${{ steps.extract.outputs.error }}';
+            const error = '${{ steps.extract.outputs.error }}' || '未知错误';
             const pr = '${{ steps.cpr.outputs.pull-request-number }}';
+            const body = success ? `✅ PR #${pr} 已创建` : `❌ 失败: ${error}`;
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: success ? `✅ PR #${pr} 已创建` : `❌ 失败: ${error}`
+              body
             });
