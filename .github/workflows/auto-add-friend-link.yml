@@ -6,65 +6,117 @@ on:
 
 jobs:
   add-friend-link:
-    if: github.event.issue.labels.*.name == 'friend-link'
+    if: contains(github.event.issue.labels.*.name, 'friend-link')  # 修复触发条件
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      issues: write
       pull-requests: write
+      issues: write  # 需要评论权限来反馈结果
+    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract friend link info from issue
+      - name: Extract and validate friend link info
         id: extract
         run: |
-          ISSUE_BODY='${{ github.event.issue.body }}'
+          ISSUE_BODY="${{ github.event.issue.body }}"
           
-          TITLE=$(echo "$ISSUE_BODY" | grep -A 1 '网站名称' | tail -n 1 | sed 's/^[[:space:]]*-[[:space:]]*\*\*[[:space:]]*网站名称[[:space:]]*\*\*[[:space:]]*:[[:space:]]*//' | xargs)
-          LINK=$(echo "$ISSUE_BODY" | grep -A 1 '网站地址' | tail -n 1 | sed 's/^[[:space:]]*-[[:space:]]*\*\*[[:space:]]*网站地址[[:space:]]*\*\*[[:space:]]*:[[:space:]]*//' | xargs)
-          DESCRIPTION=$(echo "$ISSUE_BODY" | grep -A 1 '网站描述' | tail -n 1 | sed 's/^[[:space:]]*-[[:space:]]*\*\*[[:space:]]*网站描述[[:space:]]*\*\*[[:space:]]*:[[:space:]]*//' | xargs)
-          AVATAR=$(echo "$ISSUE_BODY" | grep -A 1 '头像地址' | tail -n 1 | sed 's/^[[:space:]]*-[[:space:]]*\*\*[[:space:]]*头像地址[[:space:]]*\*\*[[:space:]]*:[[:space:]]*//' | xargs)
-          SHORT_NAME=$(echo "$ISSUE_BODY" | grep -A 1 '你的短名称' | tail -n 1 | sed 's/^[[:space:]]*-[[:space:]]*\*\*[[:space:]]*你的短名称[[:space:]]*\*\*[[:space:]]*:[[:space:]]*//' | xargs)
+          # 更健壮的提取方法（适用于 Markdown 列表格式）
+          extract_field() {
+            local field_name="$1"
+            echo "$ISSUE_BODY" | grep -i "^\s*-\s*\*\*$field_name\*\*" | sed "s/.*\*\*$field_name\*\*:\s*//" | xargs
+          }
           
-          if [ -z "$TITLE" ] || [ -z "$LINK" ] || [ -z "$DESCRIPTION" ] || [ -z "$AVATAR" ] || [ -z "$SHORT_NAME" ]; then
-            echo "Missing required fields"
+          TITLE=$(extract_field "网站名称")
+          LINK=$(extract_field "网站地址")
+          DESCRIPTION=$(extract_field "网站描述")
+          AVATAR=$(extract_field "头像地址")
+          SHORT_NAME=$(extract_field "你的短名称")
+          
+          # 验证必填字段
+          MISSING_FIELDS=()
+          [[ -z "$TITLE" ]] && MISSING_FIELDS+=("网站名称")
+          [[ -z "$LINK" ]] && MISSING_FIELDS+=("网站地址")
+          [[ -z "$DESCRIPTION" ]] && MISSING_FIELDS+=("网站描述")
+          [[ -z "$AVATAR" ]] && MISSING_FIELDS+=("头像地址")
+          [[ -z "$SHORT_NAME" ]] && MISSING_FIELDS+=("短名称")
+          
+          if [[ ${#MISSING_FIELDS[@]} -gt 0 ]]; then
+            echo "error_message=缺少必填字段: ${MISSING_FIELDS[*]}" >> $GITHUB_OUTPUT
             exit 1
           fi
           
-          echo "title=$TITLE" >> $GITHUB_OUTPUT
+          # URL 验证
+          if [[ ! "$LINK" =~ ^https:// ]]; then
+            echo "error_message=网站地址必须使用 HTTPS 协议" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          
+          # 短名称验证（仅允许字母数字）
+          if [[ ! "$SHORT_NAME" =~ ^[a-zA-Z0-9]+$ ]]; then
+            echo "error_message=短名称只能包含英文字母和数字" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          
+          # 安全转义（处理 YAML 特殊字符）
+          safe_yaml() {
+            echo "$1" | sed 's/"/\\"/g' | sed "s/'/\\'/g"
+          }
+          
+          echo "title=$(safe_yaml "$TITLE")" >> $GITHUB_OUTPUT
           echo "link=$LINK" >> $GITHUB_OUTPUT
-          echo "description=$DESCRIPTION" >> $GITHUB_OUTPUT
+          echo "description=$(safe_yaml "$DESCRIPTION")" >> $GITHUB_OUTPUT
           echo "avatar=$AVATAR" >> $GITHUB_OUTPUT
           echo "short_name=$SHORT_NAME" >> $GITHUB_OUTPUT
 
       - name: Create friend link file
+        if: success()
         run: |
           mkdir -p src/content/friends
-          cat > "src/content/friends/${{ steps.extract.outputs.short_name }}.yaml" << EOF
-          title: ${{ steps.extract.outputs.title }}
-          description: ${{ steps.extract.outputs.description }}
-          link: ${{ steps.extract.outputs.link }}
-          avatar: ${{ steps.extract.outputs.avatar }}
+          cat > "src/content/friends/${{ steps.extract.outputs.short_name }}.yaml" << 'EOF'
+          title: "${{ steps.extract.outputs.title }}"
+          description: "${{ steps.extract.outputs.description }}"
+          link: "${{ steps.extract.outputs.link }}"
+          avatar: "${{ steps.extract.outputs.avatar }}"
           EOF
 
       - name: Create Pull Request
+        if: success()
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           title: "Add friend link: ${{ steps.extract.outputs.title }}"
           body: |
-            自动添加友链申请
+            ## 自动友链申请
             
-            - 网站名称: ${{ steps.extract.outputs.title }}
-            - 网站地址: ${{ steps.extract.outputs.link }}
-            - 网站描述: ${{ steps.extract.outputs.description }}
-            - 头像地址: ${{ steps.extract.outputs.avatar }}
+            | 项目 | 内容 |
+            |------|------|
+            | 网站名称 | ${{ steps.extract.outputs.title }} |
+            | 网站地址 | ${{ steps.extract.outputs.link }} |
+            | 网站描述 | ${{ steps.extract.outputs.description }} |
+            | 头像地址 | ${{ steps.extract.outputs.avatar }} |
             
-            关联 Issue: #${{ github.event.issue.number }}
-          branch: friend-link-${{ steps.extract.outputs.short_name }}
-          commit-message: "Add friend link: ${{ steps.extract.outputs.title }}"
+            **关联 Issue**: #${{ github.event.issue.number }}
+            
+            ---
+            请审核内容是否符合要求。
+          branch: friend-link/${{ steps.extract.outputs.short_name }}
+          commit-message: "feat: add friend link - ${{ steps.extract.outputs.title }}"
+          delete-branch: true
           labels: friend-link
-          reviewers: Geekertao
+
+      - name: Comment on issue if failed
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const errorMessage = '${{ steps.extract.outputs.error_message }}' || '处理失败，请检查格式';
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `❌ **处理失败**\n\n${errorMessage}\n\n请修改 Issue 内容后重新打开。`
+            })
