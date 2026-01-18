@@ -1,2 +1,5 @@
 [build.processing.html]
   pretty_urls = false
+[build.environment]
+  NODE_VERSION = "20.11.0"  # 使用 LTS 版本，避免 v22 太新
+  PNPM_VERSION = "8.15.0"   # 锁定版本避免 lockfile 不兼容
