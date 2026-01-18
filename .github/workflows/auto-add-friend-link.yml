@@ -1,0 +1,70 @@
+name: Auto Add Friend Link
+
+on:
+  issues:
+    types: [opened, edited]
+
+jobs:
+  add-friend-link:
+    if: github.event.issue.labels.*.name == 'friend-link'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract friend link info from issue
+        id: extract
+        run: |
+          ISSUE_BODY='${{ github.event.issue.body }}'
+          
+          TITLE=$(echo "$ISSUE_BODY" | grep -A 1 '网站名称' | tail -n 1 | sed 's/^[[:space:]]*-[[:space:]]*\*\*[[:space:]]*网站名称[[:space:]]*\*\*[[:space:]]*:[[:space:]]*//' | xargs)
+          LINK=$(echo "$ISSUE_BODY" | grep -A 1 '网站地址' | tail -n 1 | sed 's/^[[:space:]]*-[[:space:]]*\*\*[[:space:]]*网站地址[[:space:]]*\*\*[[:space:]]*:[[:space:]]*//' | xargs)
+          DESCRIPTION=$(echo "$ISSUE_BODY" | grep -A 1 '网站描述' | tail -n 1 | sed 's/^[[:space:]]*-[[:space:]]*\*\*[[:space:]]*网站描述[[:space:]]*\*\*[[:space:]]*:[[:space:]]*//' | xargs)
+          AVATAR=$(echo "$ISSUE_BODY" | grep -A 1 '头像地址' | tail -n 1 | sed 's/^[[:space:]]*-[[:space:]]*\*\*[[:space:]]*头像地址[[:space:]]*\*\*[[:space:]]*:[[:space:]]*//' | xargs)
+          SHORT_NAME=$(echo "$ISSUE_BODY" | grep -A 1 '你的短名称' | tail -n 1 | sed 's/^[[:space:]]*-[[:space:]]*\*\*[[:space:]]*你的短名称[[:space:]]*\*\*[[:space:]]*:[[:space:]]*//' | xargs)
+          
+          if [ -z "$TITLE" ] || [ -z "$LINK" ] || [ -z "$DESCRIPTION" ] || [ -z "$AVATAR" ] || [ -z "$SHORT_NAME" ]; then
+            echo "Missing required fields"
+            exit 1
+          fi
+          
+          echo "title=$TITLE" >> $GITHUB_OUTPUT
+          echo "link=$LINK" >> $GITHUB_OUTPUT
+          echo "description=$DESCRIPTION" >> $GITHUB_OUTPUT
+          echo "avatar=$AVATAR" >> $GITHUB_OUTPUT
+          echo "short_name=$SHORT_NAME" >> $GITHUB_OUTPUT
+
+      - name: Create friend link file
+        run: |
+          mkdir -p src/content/friends
+          cat > "src/content/friends/${{ steps.extract.outputs.short_name }}.yaml" << EOF
+          title: ${{ steps.extract.outputs.title }}
+          description: ${{ steps.extract.outputs.description }}
+          link: ${{ steps.extract.outputs.link }}
+          avatar: ${{ steps.extract.outputs.avatar }}
+          EOF
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          title: "Add friend link: ${{ steps.extract.outputs.title }}"
+          body: |
+            自动添加友链申请
+            
+            - 网站名称: ${{ steps.extract.outputs.title }}
+            - 网站地址: ${{ steps.extract.outputs.link }}
+            - 网站描述: ${{ steps.extract.outputs.description }}
+            - 头像地址: ${{ steps.extract.outputs.avatar }}
+            
+            关联 Issue: #${{ github.event.issue.number }}
+          branch: friend-link-${{ steps.extract.outputs.short_name }}
+          commit-message: "Add friend link: ${{ steps.extract.outputs.title }}"
+          labels: friend-link
+          reviewers: Geekertao
