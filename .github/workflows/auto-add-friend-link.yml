@@ -1,19 +1,12 @@
-name: Auto Add Friend Link
+# .github/workflows/auto-friend-link.yml
+name: Auto Friend Link
 
 on:
   issues:
-    types: [opened, edited, reopened, labeled]  # 添加 labeled 事件
-  # 添加手动触发选项（方便调试）
-  workflow_dispatch:
-    inputs:
-      issue_number:
-        description: 'Issue number to process'
-        required: true
-        type: number
+    types: [opened, edited]
 
 jobs:
-  process-friend-link:
-    # 改为内部判断，永不跳过
+  process:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -21,142 +14,79 @@ jobs:
       issues: write
 
     steps:
-      - name: 🔍 Debug Info
-        run: |
-          echo "事件类型: ${{ github.event.action }}"
-          echo "Issue 编号: ${{ github.event.issue.number || github.event.inputs.issue_number }}"
-          echo "标签列表: ${{ toJson(github.event.issue.labels.*.name) }}"
-          echo "Issue 标题: ${{ github.event.issue.title }}"
-          echo "工作流被触发，检查条件..."
-
-      - name: ✅ Check if should process
-        id: check
-        run: |
-          # 手动触发直接处理
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "should_run=true" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
-          # 检查标签
-          LABELS='${{ toJson(github.event.issue.labels.*.name) }}'
-          if echo "$LABELS" | grep -q "friend-link"; then
-            echo "should_run=true" >> $GITHUB_OUTPUT
-            echo "✅ 检测到 friend-link 标签，继续处理"
-          else
-            echo "should_run=false" >> $GITHUB_OUTPUT
-            echo "⏭️ 未检测到 friend-link 标签，跳过处理（这是正常行为）"
-          fi
-
-      - name: 🛑 Exit if not friend-link
-        if: steps.check.outputs.should_run == 'false'
-        run: exit 0  # 正常退出，不报错
-
-      - name: Checkout repository
-        if: steps.check.outputs.should_run == 'true'
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract data
-        if: steps.check.outputs.should_run == 'true'
         id: extract
         env:
           ISSUE_BODY: ${{ github.event.issue.body }}
         run: |
-          echo "正在提取数据..."
-          echo "$ISSUE_BODY"
-          
-          # 兼容多种格式提取
-          extract_field() {
-            local label="$1"
-            # 支持 ### 标题、**加粗**、- 列表格式
-            echo "$ISSUE_BODY" | grep -E "(^### ${label}|^\*\*${label}\*\*|\s*-\s*\*\*${label}\*\*)" -A 1 | tail -n 1 | sed 's/^[[:space:]]*//' | sed 's/^- //'
+          extract() {
+            echo "$ISSUE_BODY" | awk -v label="### ${1}" '$0~label{getline; while(NF==0)getline; print; exit}' | sed 's/^[[:space:]]*//'
           }
           
-          TITLE=$(extract_field "网站名称")
-          LINK=$(extract_field "网站地址")
-          DESCRIPTION=$(extract_field "网站描述")
-          AVATAR=$(extract_field "头像地址")
-          SHORT_NAME=$(extract_field "短名称")
+          TITLE=$(extract "网站名称")
+          LINK=$(extract "网站地址")
+          DESCRIPTION=$(extract "网站描述")
+          AVATAR=$(extract "头像地址")
+          SHORT_NAME=$(extract "短名称")
           
-          echo "提取结果:"
-          echo "  名称: $TITLE"
-          echo "  链接: $LINK"
-          echo "  描述: $DESCRIPTION"
-          echo "  头像: $AVATAR"
-          echo "  短名: $SHORT_NAME"
+          [[ -z "$TITLE" ]] && { echo "error=名称缺失" >> $GITHUB_OUTPUT; exit 1; }
+          [[ -z "$LINK" ]] && { echo "error=地址缺失" >> $GITHUB_OUTPUT; exit 1; }
+          [[ ! "$LINK" =~ ^https:// ]] && { echo "error=需HTTPS" >> $GITHUB_OUTPUT; exit 1; }
+          [[ -z "$SHORT_NAME" ]] && { echo "error=短名称缺失" >> $GITHUB_OUTPUT; exit 1; }
+          [[ ! "$SHORT_NAME" =~ ^[a-zA-Z0-9_-]+$ ]] && { echo "error=短名称格式" >> $GITHUB_OUTPUT; exit 1; }
+          [[ -f "src/content/friends/${SHORT_NAME}.yaml" ]] && { echo "error=已存在" >> $GITHUB_OUTPUT; exit 1; }
           
-          # 验证
-          [[ -z "$TITLE" ]] && { echo "error=缺少网站名称" >> $GITHUB_OUTPUT; exit 1; }
-          [[ -z "$LINK" ]] && { echo "error=缺少网站地址" >> $GITHUB_OUTPUT; exit 1; }
-          [[ ! "$LINK" =~ ^https:// ]] && { echo "error=必须使用HTTPS" >> $GITHUB_OUTPUT; exit 1; }
-          [[ -z "$SHORT_NAME" ]] && { echo "error=缺少短名称" >> $GITHUB_OUTPUT; exit 1; }
-          [[ ! "$SHORT_NAME" =~ ^[a-zA-Z0-9_-]+$ ]] && { echo "error=短名称格式错误" >> $GITHUB_OUTPUT; exit 1; }
-          
-          # 安全转义
-          safe_yaml() {
-            echo "$1" | sed 's/"/\\"/g' | sed "s/'/\\'/g" | tr -d '\n\r'
-          }
-          
-          echo "title=$(safe_yaml "$TITLE")" >> $GITHUB_OUTPUT
+          echo "title=$TITLE" >> $GITHUB_OUTPUT
           echo "link=$LINK" >> $GITHUB_OUTPUT
-          echo "description=$(safe_yaml "$DESCRIPTION")" >> $GITHUB_OUTPUT
+          echo "description=$DESCRIPTION" >> $GITHUB_OUTPUT
           echo "avatar=$AVATAR" >> $GITHUB_OUTPUT
           echo "short_name=$SHORT_NAME" >> $GITHUB_OUTPUT
 
       - name: Create file
-        if: steps.check.outputs.should_run == 'true' && success()
+        if: success()
         run: |
-          FILE="src/content/friends/${{ steps.extract.outputs.short_name }}.yaml"
-          echo "创建文件: $FILE"
-          cat > "$FILE" << 'EOF'
-          title: "${{ steps.extract.outputs.title }}"
-          description: "${{ steps.extract.outputs.description }}"
-          link: "${{ steps.extract.outputs.link }}"
-          avatar: "${{ steps.extract.outputs.avatar }}"
-          addedAt: ${{ github.event.issue.created_at }}
+          mkdir -p src/content/friends
+          cat > "src/content/friends/${{ steps.extract.outputs.short_name }}.yaml" << EOF
+          title: ${{ steps.extract.outputs.title }}
+          description: ${{ steps.extract.outputs.description }}
+          link: ${{ steps.extract.outputs.link }}
+          avatar: ${{ steps.extract.outputs.avatar }}
+          issue: ${{ github.event.issue.number }}
           EOF
-          echo "文件内容:"
-          cat "$FILE"
 
       - name: Create PR
-        if: steps.check.outputs.should_run == 'true' && success()
+        if: success()
         id: cpr
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          title: "feat: add friend link - ${{ steps.extract.outputs.title }}"
+          title: "Add: ${{ steps.extract.outputs.title }}"
           body: |
-            ## 友链申请 #${{ github.event.issue.number }}
+            Closes #${{ github.event.issue.number }}
             
-            | 项目 | 内容 |
-            |------|------|
-            | 网站名称 | ${{ steps.extract.outputs.title }} |
-            | 网站地址 | ${{ steps.extract.outputs.link }} |
-            | 网站描述 | ${{ steps.extract.outputs.description }} |
-            | 头像地址 | ${{ steps.extract.outputs.avatar }} |
-            | 短名称 | ${{ steps.extract.outputs.short_name }} |
-          branch: friend-link/${{ steps.extract.outputs.short_name }}
-          commit-message: "feat: add friend link - ${{ steps.extract.outputs.title }}"
+            | 名称 | ${{ steps.extract.outputs.title }} |
+            | 地址 | ${{ steps.extract.outputs.link }} |
+            | 描述 | ${{ steps.extract.outputs.description }} |
+            | 头像 | ${{ steps.extract.outputs.avatar }} |
+            | 短名 | ${{ steps.extract.outputs.short_name }} |
+          branch: friend/${{ steps.extract.outputs.short_name }}
+          commit-message: "Add friend: ${{ steps.extract.outputs.title }}"
           delete-branch: true
 
-      - name: Comment result
-        if: steps.check.outputs.should_run == 'true'
+      - name: Comment
+        if: always()
         uses: actions/github-script@v7
         with:
           script: |
-            const success = '${{ steps.cpr.outcome }}' === 'success';
-            const prNumber = '${{ steps.cpr.outputs.pull-request-number }}';
+            const success = '${{ steps.extract.outcome }}' === 'success';
             const error = '${{ steps.extract.outputs.error }}';
-            
-            let body = success 
-              ? `✅ **成功！** 已创建 PR #${prNumber}`
-              : `❌ **失败！** ${error}`;
-            
+            const pr = '${{ steps.cpr.outputs.pull-request-number }}';
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body
+              body: success ? `✅ PR #${pr} 已创建` : `❌ 失败: ${error}`
             });
