@@ -2,68 +2,58 @@ name: Auto Add Friend Link
 
 on:
   issues:
-    types: [opened, edited]
+    types: [opened, edited, reopened]
 
 jobs:
-  add-friend-link:
+  process-friend-link:
     if: contains(github.event.issue.labels.*.name, 'friend-link')  # 修复触发条件
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
-      issues: write  # 需要评论权限来反馈结果
-    
+      issues: write
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract and validate friend link info
+      - name: Extract friend link data
         id: extract
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
         run: |
-          ISSUE_BODY="${{ github.event.issue.body }}"
-          
-          # 更健壮的提取方法（适用于 Markdown 列表格式）
+          # 提取函数（处理单行 input 格式）
           extract_field() {
-            local field_name="$1"
-            echo "$ISSUE_BODY" | grep -i "^\s*-\s*\*\*$field_name\*\*" | sed "s/.*\*\*$field_name\*\*:\s*//" | xargs
+            local label="$1"
+            # 支持 ### 标题格式和 **加粗** 格式
+            echo "$ISSUE_BODY" | grep -E "(^### ${label}|^\*\*${label}\*\*)" -A 1 | tail -n 1 | sed 's/^[[:space:]]*//'
           }
           
+          # 获取原始值（去除首尾空格）
           TITLE=$(extract_field "网站名称")
           LINK=$(extract_field "网站地址")
           DESCRIPTION=$(extract_field "网站描述")
           AVATAR=$(extract_field "头像地址")
-          SHORT_NAME=$(extract_field "你的短名称")
+          SHORT_NAME=$(extract_field "短名称")
           
           # 验证必填字段
-          MISSING_FIELDS=()
-          [[ -z "$TITLE" ]] && MISSING_FIELDS+=("网站名称")
-          [[ -z "$LINK" ]] && MISSING_FIELDS+=("网站地址")
-          [[ -z "$DESCRIPTION" ]] && MISSING_FIELDS+=("网站描述")
-          [[ -z "$AVATAR" ]] && MISSING_FIELDS+=("头像地址")
-          [[ -z "$SHORT_NAME" ]] && MISSING_FIELDS+=("短名称")
+          for field in "$TITLE" "$LINK" "$DESCRIPTION" "$AVATAR" "$SHORT_NAME"; do
+            if [[ -z "$field" ]]; then
+              echo "error_message=❌ 提取失败：请确保所有必填字段已填写" >> $GITHUB_OUTPUT
+              exit 1
+            fi
+          done
           
-          if [[ ${#MISSING_FIELDS[@]} -gt 0 ]]; then
-            echo "error_message=缺少必填字段: ${MISSING_FIELDS[*]}" >> $GITHUB_OUTPUT
-            exit 1
-          fi
+          # 安全验证
+          [[ ! "$LINK" =~ ^https:// ]] && { echo "error_message=❌ 网站地址必须使用 HTTPS" >> $GITHUB_OUTPUT; exit 1; }
+          [[ ! "$SHORT_NAME" =~ ^[a-zA-Z0-9_-]+$ ]] && { echo "error_message=❌ 短名称只能包含字母、数字、下划线和连字符" >> $GITHUB_OUTPUT; exit 1; }
+          [[ -e "src/content/friends/${SHORT_NAME}.yaml" ]] && { echo "error_message=❌ 短名称 '${SHORT_NAME}' 已存在" >> $GITHUB_OUTPUT; exit 1; }
           
-          # URL 验证
-          if [[ ! "$LINK" =~ ^https:// ]]; then
-            echo "error_message=网站地址必须使用 HTTPS 协议" >> $GITHUB_OUTPUT
-            exit 1
-          fi
-          
-          # 短名称验证（仅允许字母数字）
-          if [[ ! "$SHORT_NAME" =~ ^[a-zA-Z0-9]+$ ]]; then
-            echo "error_message=短名称只能包含英文字母和数字" >> $GITHUB_OUTPUT
-            exit 1
-          fi
-          
-          # 安全转义（处理 YAML 特殊字符）
+          # YAML 安全转义（处理引号和换行）
           safe_yaml() {
-            echo "$1" | sed 's/"/\\"/g' | sed "s/'/\\'/g"
+            echo "$1" | sed 's/"/\\"/g' | sed "s/'/\\'/g" | tr -d '\n' | tr -d '\r'
           }
           
           echo "title=$(safe_yaml "$TITLE")" >> $GITHUB_OUTPUT
@@ -77,20 +67,23 @@ jobs:
         run: |
           mkdir -p src/content/friends
           cat > "src/content/friends/${{ steps.extract.outputs.short_name }}.yaml" << 'EOF'
+          # 友链申请 from Issue #${{ github.event.issue.number }}
           title: "${{ steps.extract.outputs.title }}"
           description: "${{ steps.extract.outputs.description }}"
           link: "${{ steps.extract.outputs.link }}"
           avatar: "${{ steps.extract.outputs.avatar }}"
+          addedAt: ${{ github.event.issue.created_at }}
           EOF
 
       - name: Create Pull Request
         if: success()
+        id: cpr
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          title: "Add friend link: ${{ steps.extract.outputs.title }}"
+          title: "feat: add friend link - ${{ steps.extract.outputs.title }}"
           body: |
-            ## 自动友链申请
+            ## 友链申请自动化 PR
             
             | 项目 | 内容 |
             |------|------|
@@ -98,25 +91,41 @@ jobs:
             | 网站地址 | ${{ steps.extract.outputs.link }} |
             | 网站描述 | ${{ steps.extract.outputs.description }} |
             | 头像地址 | ${{ steps.extract.outputs.avatar }} |
+            | 短名称 | ${{ steps.extract.outputs.short_name }} |
             
             **关联 Issue**: #${{ github.event.issue.number }}
             
             ---
-            请审核内容是否符合要求。
+            🔄 请审核内容是否符合友链要求，通过后合并即可自动发布。
           branch: friend-link/${{ steps.extract.outputs.short_name }}
           commit-message: "feat: add friend link - ${{ steps.extract.outputs.title }}"
           delete-branch: true
           labels: friend-link
 
-      - name: Comment on issue if failed
-        if: failure()
+      - name: Comment success on issue
+        if: success()
         uses: actions/github-script@v7
         with:
           script: |
-            const errorMessage = '${{ steps.extract.outputs.error_message }}' || '处理失败，请检查格式';
+            const prNumber = '${{ steps.cpr.outputs.pull-request-number }}';
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `❌ **处理失败**\n\n${errorMessage}\n\n请修改 Issue 内容后重新打开。`
+              body: `✅ **处理成功！**\n\n已创建 Pull Request #${prNumber}，请等待审核。`
             })
+
+      - name: Comment failure on issue
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const errorMessage = '${{ steps.extract.outputs.error_message }}' || '未知错误';
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `${errorMessage}\n\n请修改后重新提交，或联系维护者。`
+            })
+          # 可选：自动关闭格式错误的 Issue
+          # github.rest.issues.update({...state: 'closed'})
