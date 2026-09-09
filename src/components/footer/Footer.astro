@@ -39,7 +39,7 @@ const wordCountStr = (wordCount / 1000).toFixed(1) + 'k'
       <span>共嘚嘚了 {wordCountStr} 字</span>
     </div>
     <div>
-      <Link
+      <p>非正规娱乐性质ICP备案:</p><Link
         target="_blank"
         rel="noopener noreferrer"
         href="https://icp.felicity.land/?keyword=%E5%B9%B8ICP%E5%A4%8720250721%E5%8F%B7"
@@ -51,21 +51,42 @@ const wordCountStr = (wordCount / 1000).toFixed(1) + 'k'
         >萌ICP备20260715</Link
       >
     </div>
-    <div
-      class="netease-mini-player"
-      data-playlist-id="12841549833"
-      data-embed="false"
-      data-position="bottom-left"
-      data-lyric="true"
-      data-theme="auto"
-    >
-    </div>
-    <!-- 引入 CSS 文件 -->
-    <link
-      rel="stylesheet"
-      href="https://cdn.felicity.land/NeteaseMiniPlayer/netease-mini-player-v2.css"
-    /><!-- 引入 JS 文件 -->
-    <script src="https://cdn.felicity.land/NeteaseMiniPlayer/netease-mini-player-v2.js"></script>
+    <!-- 美观备案号（带工信部图标） -->
+<style>
+    .icp-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: linear-gradient(135deg, #f8faff 0%, #eef4ff 100%);
+        padding: 4px 14px 4px 10px;
+        border-radius: 30px;
+        border: 1px solid #d0dff0;
+        box-shadow: 0 2px 6px rgba(0, 20, 50, 0.06);
+        text-decoration: none;
+        font-size: 14px;
+        color: #2c3e50;
+        transition: all 0.2s ease;
+        font-family: system-ui, -apple-system, sans-serif;
+    }
+    .icp-badge:hover {
+        background: linear-gradient(135deg, #eef4ff 0%, #dce8ff 100%);
+        border-color: #8bb3e0;
+        box-shadow: 0 4px 12px rgba(30, 80, 180, 0.12);
+        transform: translateY(-1px);
+        color: #1a2a44;
+    }
+    .icp-badge img {
+        height: 18px;
+        width: auto;
+        vertical-align: middle;
+        filter: drop-shadow(0 1px 2px rgba(0,0,0,0.05));
+    }
+</style>
+
+<a href="https://beian.miit.gov.cn/" target="_blank" class="icp-badge">
+    <img src="https://beian.miit.gov.cn/favicon.ico" alt="工信部备案" />
+    鲁ICP备2026027679号
+</a>
   </div>
   <div class="mt-4 flex justify-center">
     <ThemeSwitch client:only="react" />
