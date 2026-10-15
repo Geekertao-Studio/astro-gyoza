@@ -44,16 +44,14 @@ const wordCountStr = (wordCount / 1000).toFixed(1) + 'k'
         rel="noopener noreferrer"
         href="https://icp.felicity.land/?keyword=%E5%B9%B8ICP%E5%A4%8720250721%E5%8F%B7"
         >幸ICP备20250721号</Link
-      >  <Link
-        target="_blank"
-        rel="noopener noreferrer"
-        href="https://icp.gov.moe/?keyword=20260715"
+      >
+      <Link target="_blank" rel="noopener noreferrer" href="https://icp.gov.moe/?keyword=20260715"
         >萌ICP备20260715</Link
       >
     </div>
     <!-- 美观备案号（带工信部图标） -->
-<style>
-    .icp-badge {
+    <style>
+      .icp-badge {
         display: inline-flex;
         align-items: center;
         gap: 6px;
@@ -66,27 +64,30 @@ const wordCountStr = (wordCount / 1000).toFixed(1) + 'k'
         font-size: 14px;
         color: #2c3e50;
         transition: all 0.2s ease;
-        font-family: system-ui, -apple-system, sans-serif;
-    }
-    .icp-badge:hover {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+      }
+      .icp-badge:hover {
         background: linear-gradient(135deg, #eef4ff 0%, #dce8ff 100%);
         border-color: #8bb3e0;
         box-shadow: 0 4px 12px rgba(30, 80, 180, 0.12);
         transform: translateY(-1px);
         color: #1a2a44;
-    }
-    .icp-badge img {
+      }
+      .icp-badge img {
         height: 18px;
         width: auto;
         vertical-align: middle;
-        filter: drop-shadow(0 1px 2px rgba(0,0,0,0.05));
-    }
-</style>
+        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.05));
+      }
+    </style>
 
-<a href="https://beian.miit.gov.cn/" target="_blank" class="icp-badge">
-    <img src="/miit_logo.png" alt="工信部备案" />
-    鲁ICP备2026027679号
-</a>
+    <a href="https://beian.miit.gov.cn/" target="_blank" class="icp-badge">
+      <img src="/miit_logo.png" alt="工信部备案" />
+      鲁ICP备2026027679号-5
+    </a>
   </div>
   <div class="mt-4 flex justify-center">
     <ThemeSwitch client:only="react" />

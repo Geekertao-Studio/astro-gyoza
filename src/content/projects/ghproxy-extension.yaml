@@ -1,0 +1,4 @@
+title: ghproxy-extension
+description: 国内开发者的 GitHub 下载痛点终结者。自动测速选路、页面级拦截下载请求、兼容 IDM/Aria2，无需任何手动配置即可让 Releases、Raw、Archive 等资源的下载速度回归正常水平。
+image: https://opengraph.githubassets.com/1/hubporg/ghproxy-extension
+link: https://github.com/hubporg/ghproxy-extension
