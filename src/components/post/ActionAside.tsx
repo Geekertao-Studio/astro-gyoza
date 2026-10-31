@@ -64,7 +64,8 @@ function ShareButton() {
     <button
       type="button"
       aria-label="Share this post"
-      className="size-6 text-xl leading-none hover:text-accent"
+      title="分享"
+      className="size-6 cursor-pointer rounded-md text-xl leading-none transition-colors hover:bg-secondary hover:text-accent"
       onClick={() => openModal()}
     >
       <i className="iconfont icon-share"></i>
@@ -119,7 +120,8 @@ function DonateButton() {
     <button
       type="button"
       aria-label="Donate to author"
-      className="size-6 text-xl leading-none hover:text-accent"
+      title="赞赏"
+      className="size-6 cursor-pointer rounded-md text-xl leading-none transition-colors hover:bg-secondary hover:text-accent"
       onClick={() => openDonate()}
     >
       <i className="iconfont icon-user-heart"></i>

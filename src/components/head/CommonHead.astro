@@ -5,9 +5,10 @@ interface Props {
   title?: string
   description?: string
   image?: string
+  noindex?: boolean
 }
 
-const { title = site.title, description = site.description, image } = Astro.props
+const { title = site.title, description = site.description, image, noindex = false } = Astro.props
 
 const titleWithSiteSuffix = title === site.title ? title : `${title} - ${site.title}`
 ---
@@ -24,6 +25,7 @@ const titleWithSiteSuffix = title === site.title ? title : `${title} - ${site.ti
 <meta name="description" content={description} />
 <meta name="keywords" content={site.keywords} />
 <meta name="generator" content={Astro.generator} />
+{noindex && <meta name="robots" content="noindex" />}
 
 <meta property="og:url" content={Astro.url} />
 <meta property="og:type" content="website" />

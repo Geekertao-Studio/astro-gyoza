@@ -42,3 +42,31 @@ html.gray {
 * {
   scrollbar-width: thin;
 }
+
+/* 文章头图：整屏宽的标题色带，颜色来自封面主色，由行内变量提供 */
+.post-hero {
+  background: var(--post-hero-light, transparent);
+}
+
+[data-theme='dark'] .post-hero {
+  background: var(--post-hero-dark, transparent);
+}
+
+/* 封面图底部渐隐到色带色，避免出现一条生硬的接缝 */
+.post-hero-fade {
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.12),
+    transparent 55%,
+    var(--post-hero-light, transparent)
+  );
+}
+
+[data-theme='dark'] .post-hero-fade {
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.35),
+    transparent 55%,
+    var(--post-hero-dark, transparent)
+  );
+}

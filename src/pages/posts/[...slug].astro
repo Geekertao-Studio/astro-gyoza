@@ -14,6 +14,9 @@ import PostNav from '@/components/post/PostNav.astro'
 import { Comments } from '@/components/comment'
 import { ActionAside } from '@/components/post/ActionAside'
 import { PostCopyright } from '@/components/post/PostCopyright'
+import AiNotice from '@/components/post/AiNotice.astro'
+import coverColors from '@/data/cover-colors.json'
+import chroma from 'chroma-js'
 
 export const getStaticPaths = (async () => {
   const sortedPosts = await getSortedPosts()
@@ -50,6 +53,19 @@ function concat(str1: string, str2: string, sep = ' / ') {
 }
 
 const lastMod = current.data.lastMod || current.data.date
+
+// 封面主色：交给 AccentColorInjector 顶掉随机 accent，实现"莫奈取色"
+const coverAccent = current.data.cover
+  ? (coverColors as Record<string, { light: string; dark: string }>)[current.data.cover]
+  : undefined
+
+// 头图底色：沿用主题给 body 配色的同一套混合比例（亮 5% / 暗 12%），只是把这篇文章提浓一点
+const heroBg = coverAccent
+  ? {
+      light: chroma.mix('#fafafa', coverAccent.light, 0.1, 'rgb').hex(),
+      dark: chroma.mix('#000212', coverAccent.dark, 0.18, 'rgb').hex(),
+    }
+  : undefined
 ---
 
 <MarkdownLayout
@@ -60,53 +76,116 @@ const lastMod = current.data.lastMod || current.data.date
   mdDescription={mdDescription}
   mdSlug={mdSlug}
 >
-  <div
-    class="max-w-[1100px] mx-auto px-4 md:px-8 py-16 grid lg:grid-cols-[auto_260px] gap-8"
-    data-pagefind-body
-  >
-    <div>
-      <header class="space-y-4">
-        <h1 class="text-4xl font-bold text-center">
-          {current.data.title}
-        </h1>
-        <PostMetaInfo
-          class="justify-center"
-          date={current.data.date}
-          lastMod={current.data.lastMod}
-          words={remarkPluginFrontmatter.words}
-          readingMinutes={remarkPluginFrontmatter.readingMinutes}
-        />
-        <PostArchiveInfo
-          class="justify-center"
-          category={current.data.category}
-          tags={current.data.tags}
-        />
-        <div>
-          <Outdate lastMod={lastMod} client:idle />
+  {
+    heroBg && (
+      <div
+        class="post-hero -mt-16 relative"
+        style={`--post-hero-light: ${heroBg.light}; --post-hero-dark: ${heroBg.dark};`}
+        data-pagefind-ignore
+      >
+        <div class="relative h-[180px] overflow-hidden sm:h-[240px]">
+          <img
+            src={current.data.cover}
+            alt={current.data.title}
+            class="absolute inset-0 h-full w-full object-cover"
+            loading="eager"
+            fetchpriority="high"
+          />
+          <div class="post-hero-fade pointer-events-none absolute inset-0" />
         </div>
-      </header>
-    </div>
-    <div class="col-start-1 min-w-0">
-      <MarkdownWrapper>
-        <Content />
-      </MarkdownWrapper>
-    </div>
-    <div class="hidden lg:block" data-pagefind-ignore>
-      <aside class="sticky top-20">
-        <SectionBlock title="目录">
-          <PostToc headings={headings} client:idle />
-          <hr class="my-2 border-primary max-w-[100px]" />
-          <ReadingProgress client:idle />
-        </SectionBlock>
-        <ActionAside client:idle />
-      </aside>
-    </div>
-    <div data-pagefind-ignore>
-      <section class="space-y-6">
-        <PostCopyright title={current.data.title} slug={mdSlug} lastMod={lastMod} client:visible />
-        <PostNav prev={prev} next={next} />
-        {current.data.comments && <Comments />}
-      </section>
+        <div class="max-w-[1100px] mx-auto px-4 md:px-8 pt-2 pb-10 text-center space-y-3">
+          <h1 class="text-3xl font-bold sm:text-4xl">{current.data.title}</h1>
+          <PostMetaInfo
+            class="justify-center"
+            date={current.data.date}
+            lastMod={current.data.lastMod}
+            words={remarkPluginFrontmatter.words}
+            readingMinutes={remarkPluginFrontmatter.readingMinutes}
+          />
+          <PostArchiveInfo
+            class="justify-center"
+            category={current.data.category}
+            tags={current.data.tags}
+          />
+          <div class="text-center">
+            <Outdate lastMod={lastMod} client:idle />
+          </div>
+        </div>
+      </div>
+    )
+  }
+  <div class="max-w-[1100px] mx-auto px-4 md:px-8 py-16" data-pagefind-body>
+    {
+      coverAccent && (
+        <>
+          <script
+            type="application/json"
+            id="cover-accent"
+            set:html={JSON.stringify(coverAccent)}
+          />
+          <style
+            is:inline
+            set:html={`html { --color-accent: ${chroma(coverAccent.light).rgb().join(' ')}; }
+[data-theme='dark'] { --color-accent: ${chroma(coverAccent.dark).rgb().join(' ')}; }`}
+          />
+        </>
+      )
+    }
+    <div class="grid lg:grid-cols-[auto_260px] gap-8">
+      <div>
+        {
+          !current.data.cover && (
+            <>
+              <h1 class="mb-6 text-center text-4xl font-bold">{current.data.title}</h1>
+              <header class="space-y-4 mb-8">
+                <PostMetaInfo
+                  class="justify-center"
+                  date={current.data.date}
+                  lastMod={current.data.lastMod}
+                  words={remarkPluginFrontmatter.words}
+                  readingMinutes={remarkPluginFrontmatter.readingMinutes}
+                />
+                <PostArchiveInfo
+                  class="justify-center"
+                  category={current.data.category}
+                  tags={current.data.tags}
+                />
+                <div class="text-center">
+                  <Outdate lastMod={lastMod} client:idle />
+                </div>
+              </header>
+            </>
+          )
+        }
+      </div>
+      <div class="col-start-1 min-w-0">
+        {current.data.aiAssisted && <AiNotice class="mb-6" />}
+        <MarkdownWrapper>
+          <Content />
+        </MarkdownWrapper>
+      </div>
+      <div class="hidden lg:block" data-pagefind-ignore>
+        <aside class="sticky top-20">
+          <SectionBlock title="目录">
+            <PostToc headings={headings} client:idle />
+            <hr class="my-2 border-primary max-w-[100px]" />
+            <ReadingProgress client:idle />
+          </SectionBlock>
+          <ActionAside client:load />
+        </aside>
+      </div>
+      <div data-pagefind-ignore>
+        <section class="space-y-6">
+          <PostCopyright
+            title={current.data.title}
+            slug={mdSlug}
+            lastMod={lastMod}
+            client:visible
+          />
+          <PostNav prev={prev} next={next} />
+          {current.data.comments && <Comments />}
+        </section>
+      </div>
     </div>
   </div>
 </MarkdownLayout>

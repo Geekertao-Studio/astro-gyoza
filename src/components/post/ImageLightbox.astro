@@ -1,0 +1,67 @@
+---
+// 文章图片灯箱：缩放（滚轮 / 双指）、切换、键盘、垂直拖拽关闭全部交给 PhotoSwipe
+// 挂在 Layout 的 body 级，用事件委托绑在 document 上，swup 换页后依然有效
+---
+
+<style is:global>
+  .markdown img {
+    cursor: zoom-in;
+  }
+
+  .markdown a img {
+    cursor: pointer;
+  }
+</style>
+
+<script>
+  import PhotoSwipe from 'photoswipe'
+  import 'photoswipe/style.css'
+
+  const GALLERY = '.markdown'
+
+  function collect(source: HTMLImageElement) {
+    const images = Array.from(document.querySelectorAll<HTMLImageElement>(`${GALLERY} img`)).filter(
+      (img) => !img.closest('a') && !img.closest('[data-no-zoom]'),
+    )
+    const dataSource = images.map((img) => ({
+      src: img.currentSrc || img.src,
+      width: img.naturalWidth || img.width || 1200,
+      height: img.naturalHeight || img.height || 800,
+      alt: img.alt || '',
+    }))
+    return { dataSource, index: Math.max(0, images.indexOf(source)) }
+  }
+
+  function open(img: HTMLImageElement) {
+    const { dataSource, index } = collect(img)
+    if (dataSource.length === 0) return
+
+    const pswp = new PhotoSwipe({
+      dataSource,
+      index,
+      pswpModule: PhotoSwipe,
+      // 滚轮缩放 + 双指缩放 + 双击放大
+      wheelToZoom: true,
+      // 原图小于视口时 PhotoSwipe 默认不再放大，这里放开到 3 倍，滚轮/双指才有放大空间
+      maxZoomLevel: 3,
+      counter: true,
+      closeOnVerticalDrag: true,
+      bgOpacity: 0.92,
+      showHideAnimationType: 'zoom',
+      padding: { top: 24, bottom: 24, left: 16, right: 16 },
+    })
+    pswp.init()
+  }
+
+  document.addEventListener('click', (event) => {
+    const img = (event.target as Element | null)?.closest<HTMLImageElement>(`${GALLERY} img`)
+    if (!img || img.closest('a') || img.closest('[data-no-zoom]')) return
+    event.preventDefault()
+    // 图片还没加载完时拿不到真实宽高，等加载完再打开
+    if (!img.complete) {
+      img.addEventListener('load', () => open(img), { once: true })
+      return
+    }
+    open(img)
+  })
+</script>

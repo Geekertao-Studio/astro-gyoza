@@ -4,7 +4,8 @@ date: 2025-08-30
 lastMod: 2025-08-31T13:30:16.758Z
 summary: 多账户、多 Zone 的 Cloudflare 流量分析仪表盘
 category: 教程
-tags: [项目介绍, Cloudflare, 数据分析, 开源项目]
+aiAssisted: true
+tags: [项目介绍, Cloudflare, 数据分析, 开源项目, GitHub]
 ---
 
 # Cloudflare Analytics Dashboard

@@ -2,7 +2,16 @@
   import chroma from 'chroma-js'
   import { color as themeColor } from '@/config.json'
 
-  function pickRandomAccent() {
+  function pickAccent() {
+    // 文章页把封面主色写进 #cover-accent，这里优先用它，其它页面照旧随机
+    const el = document.getElementById('cover-accent')
+    if (el?.textContent) {
+      try {
+        const cover = JSON.parse(el.textContent)
+        if (cover?.light) return { light: cover.light, dark: cover.dark || cover.light }
+      } catch {}
+    }
+
     const seed = (Math.random() * themeColor.accent.length) | 0
     return themeColor.accent[seed]
   }
@@ -12,7 +21,7 @@
   }
 
   function injectColor() {
-    const accentColor = pickRandomAccent()
+    const accentColor = pickAccent()
 
     const rootBgColor = {
       light: chroma.mix('rgb(250,250,250)', accentColor.light, 0.05, 'rgb'),

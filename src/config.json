@@ -148,7 +148,7 @@
       "icon": "icon-hearts"
     },
     {
-      "name": "主站",
+      "name": "主站(Geekertao.top)",
       "link": "https://geekertao.top",
       "icon": "icon-hashtag"
     },
@@ -168,7 +168,7 @@
     "serverURL": "https://waline.geekertao.top"
   },
   "sponsor": {
-    "wechat": "https://obj.geekertao.top/zsm.jpg"
+    "wechat": "https://img.geekertao.com/uploads/2026/10/31/paste-1793480489315_da45a6b8-6ba8-48f6-9984-0ae8eb66a8fd.png"
   },
   "analytics": {
     "enable": true,

@@ -54,5 +54,10 @@ export default defineConfig({
         external: ['/pagefind/pagefind.js'],
       },
     },
+    // 评论组件在 client:visible 的 island 里懒加载，dev 的依赖扫描常漏掉它，
+    // 导致 /node_modules/.vite/deps/@waline_client.js 一直 504
+    optimizeDeps: {
+      include: ['@waline/client'],
+    },
   },
 })

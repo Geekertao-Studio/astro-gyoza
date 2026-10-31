@@ -9,6 +9,7 @@ import {
 import { BackToTopFAB } from '@/components/BackToTopFAB'
 import { ToastContainer } from '@/components/ToastContainer'
 import { ModalStack } from '@/components/ui/modal'
+import ImageLightbox from '@/components/post/ImageLightbox.astro'
 import { site } from '@/config.json'
 import '@/styles/global.css'
 
@@ -16,15 +17,16 @@ interface Props {
   title?: string
   description?: string
   image?: string
+  noindex?: boolean
 }
 
-const { title, description, image } = Astro.props
+const { title, description, image, noindex } = Astro.props
 ---
 
 <!doctype html>
 <html lang={site.lang}>
   <head>
-    <CommonHead title={title} description={description} image={image} />
+    <CommonHead title={title} description={description} image={image} noindex={noindex} />
     <WebAnalytics />
     <ThemeLoader />
     <AccentColorInjector />
@@ -36,5 +38,39 @@ const { title, description, image } = Astro.props
     <BackToTopFAB client:only="react" />
     <ToastContainer client:only="react" />
     <ModalStack client:only="react" />
+    <ImageLightbox />
+
+    <script>
+      // 站外链接统一走 /redirect 中转页。swup 导航会重新执行本脚本，用标记避免重复绑定监听器。
+      if (!(window as any).__externalRedirectBound) {
+        ;(window as any).__externalRedirectBound = true
+
+        document.addEventListener('click', (event) => {
+          if (event.defaultPrevented || event.button !== 0) return
+
+          const anchor = (event.target as Element | null)?.closest(
+            'a[href]',
+          ) as HTMLAnchorElement | null
+          if (!anchor || anchor.closest('[data-no-redirect]')) return
+
+          let url: URL
+          try {
+            url = new URL(anchor.href, location.href)
+          } catch {
+            return
+          }
+          // 只拦截 http(s) 且跨站的链接，mailto/tel、站内链接、锚点保持原行为
+          if (url.protocol !== 'http:' && url.protocol !== 'https:') return
+          if (url.origin === location.origin) return
+
+          event.preventDefault()
+          const redirect = `/redirect?url=${encodeURIComponent(url.href)}`
+          const newTab =
+            anchor.target === '_blank' || event.ctrlKey || event.metaKey || event.shiftKey
+          if (newTab) window.open(redirect, '_blank')
+          else location.href = redirect
+        })
+      }
+    </script>
   </body>
 </html>

@@ -1,0 +1,18 @@
+---
+interface Props {
+  class?: string
+}
+
+const { class: className } = Astro.props
+---
+
+<div
+  class="flex items-start gap-3 rounded-lg border border-accent/40 bg-accent/10 px-4 py-3 text-sm"
+  class:list={[className]}
+>
+  <i class="iconfont icon-info shrink-0 mt-0.5 text-accent"></i>
+  <p>
+    本文由 <strong class="font-semibold">AI 辅助生成</strong
+    >，内容可能存在事实性错误或表述偏差，请自行核对后参考。
+  </p>
+</div>
